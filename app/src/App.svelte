@@ -16,12 +16,12 @@
   <h1>Python Learning App</h1>
   
   {#if initialized}
-    <CodeCell {evaluator} id="cell-1" initialCode={`print('Hello from Pyodide!')\n2 + 2`} />
+    <CodeCell {evaluator} id="cell-1" initialCode={`import pandas as pd\nimport numpy as np\n\n# Create a sample DataFrame\ndf = pd.DataFrame(np.random.randn(10, 5), columns=['A', 'B', 'C', 'D', 'E'])\ndf`} />
     
-    <h2>Rich Output Demo</h2>
-    <CodeCell {evaluator} id="cell-2" initialCode={`class StyledBox:\n    def _repr_html_(self):\n        return '<div style="background: #ffeb3b; padding: 20px; border-radius: 10px; border: 2px solid #fbc02d; text-align: center;"><b>I am an HTML representation!</b></div>'\n\nStyledBox()`} />
+    <h2>Matplotlib Visualization</h2>
+    <CodeCell {evaluator} id="cell-2" initialCode={`import matplotlib.pyplot as plt\nimport numpy as np\n\nx = np.linspace(0, 10, 100)\ny = np.sin(x)\n\nplt.figure(figsize=(8, 4))\nplt.plot(x, y, label='sin(x)')\nplt.title('Simple Plot')\nplt.legend()\nplt.show()`} />
   {:else}
-    <p>Initializing Python environment...</p>
+    <p>Initializing Python environment with Pandas and Matplotlib... (this may take a moment)</p>
   {/if}
 </main>
 
