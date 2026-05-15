@@ -14,7 +14,6 @@ export class PyodideEvaluator implements Evaluator {
     this.initialized = (async () => {
       try {
         if (!cachedWorkerFactory) {
-            // Revert to a simpler import to see if bundling is the issue
             // @ts-ignore
             const mod = await import('./pyodide.worker?worker');
             cachedWorkerFactory = mod.default;
@@ -26,17 +25,23 @@ export class PyodideEvaluator implements Evaluator {
           const id = Math.random().toString(36).substring(7);
 
           const onMessage = (event: MessageEvent) => {
-            const { type, id: msgId, error, ...data } = event.data;
+            const { type, id: msgId, ...data } = event.data;
             
             if (type === 'init-completed' && msgId === id) {
+              console.log('PyodideEvaluator: Init completed');
               resolve();
             } else if (type === 'error' && msgId === id) {
-              reject(new Error(error || 'Unknown initialization error'));
+              console.error('PyodideEvaluator: Init error:', data.error);
+              reject(new Error(data.error || 'Unknown initialization error'));
             } else if (type === 'evaluate-completed') {
+              console.log('PyodideEvaluator: Evaluation completed for id:', msgId, 'keys:', Object.keys(data));
+              
               const resolver = this.pendingResolves.get(msgId);
               if (resolver) {
                 resolver(data);
                 this.pendingResolves.delete(msgId);
+              } else {
+                console.warn('PyodideEvaluator: No resolver found for id:', msgId);
               }
             }
           };
@@ -47,7 +52,8 @@ export class PyodideEvaluator implements Evaluator {
           this.worker!.postMessage({ type: 'init', id, isTest });
         });
       } catch (err) {
-        reject(err);
+        console.error('Failed to initialize Pyodide worker:', err);
+        throw err;
       }
     })();
 

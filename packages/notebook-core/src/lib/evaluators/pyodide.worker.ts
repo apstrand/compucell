@@ -1,30 +1,6 @@
-// ABSOLUTE TOP OF THE WORKER
-// We MUST provide a process object that doesn't trigger Node.js paths.
-// Pyodide asm.js environment detection is extremely sensitive.
-(function() {
-    const g: any = typeof self !== 'undefined' ? self : globalThis;
-    
-    // Completely mask any Node-like properties
-    const safeProcess = {
-        env: { NODE_DEBUG: undefined },
-        versions: {},
-        platform: 'browser',
-        browser: true
-    };
-    
-    try {
-        Object.defineProperty(g, 'process', {
-            get: () => safeProcess,
-            set: () => {},
-            configurable: true
-        });
-    } catch (e) {
-        g.process = safeProcess;
-    }
-    
-    g.IN_NODE = false;
-    g.global = g;
-})();
+// Defensive environment polyfills for Pyodide in various bundling contexts
+(globalThis as any).process = { env: { NODE_DEBUG: undefined } };
+(globalThis as any).IN_NODE = false;
 
 import { loadPyodide, type PyodideInterface } from 'pyodide';
 
@@ -45,16 +21,6 @@ async function initPyodide(isTest = false) {
     // Configure plotly for pyodide
     await pyodide.runPythonAsync(`
 import plotly.io as pio
-plotly_html_template = """
-<div id='{id}'></div>
-<script type='text/javascript'>
-    {script}
-    var layout = {layout};
-    var data = {data};
-    Plotly.newPlot('{id}', data, layout);
-</script>
-"""
-# Set a default renderer that works well with our setup
 pio.renderers.default = "notebook"
     `);
   } else {
@@ -135,89 +101,155 @@ def _introspect_code(code):
   `);
 }
 
+/**
+ * Robustly ensure an object is safe to send via postMessage.
+ */
+function safeClone(obj: any, depth = 0): any {
+    if (depth > 5) return "[Truncated]";
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'number' || typeof obj === 'string' || typeof obj === 'boolean') return obj;
+
+    if (typeof obj === 'object' && typeof obj.toJs === 'function') {
+        try {
+            return safeClone(obj.toJs(), depth + 1);
+        } catch (e) {
+            return String(obj);
+        }
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(i => safeClone(i, depth + 1));
+    }
+
+    if (typeof obj === 'object') {
+        const clone: any = {};
+        for (const key in obj) {
+            try {
+                const val = obj[key];
+                if (typeof val !== 'function' && typeof val !== 'symbol') {
+                    clone[key] = safeClone(val, depth + 1);
+                }
+            } catch (e) {}
+        }
+        return clone;
+    }
+    return String(obj);
+}
+
+function sendToMain(message: any) {
+    // CRITICAL: Ensure fields like error are explicitly present in the final object
+    const payload = {
+        type: message.type,
+        id: message.id,
+        stdout: message.stdout,
+        stderr: message.stderr,
+        formats: message.formats,
+        metadata: message.metadata,
+        result: message.result,
+        error: message.error
+    };
+
+    console.log('Worker: postMessage with error check:', !!payload.error);
+    if (payload.error) {
+        console.log('Worker: Error value type:', typeof payload.error);
+    }
+    
+    try {
+        self.postMessage(payload);
+    } catch (e) {
+        console.error('Worker: postMessage failed, attempting minimal fallback', e);
+        try {
+            const simplified = {
+                type: message.type,
+                id: message.id,
+                stdout: String(message.stdout || ''),
+                stderr: String(message.stderr || ''),
+                result: String(message.result || ''),
+                error: message.error ? String(message.error.message || message.error) : 'Serialization Error',
+                formats: {},
+                metadata: {}
+            };
+            self.postMessage(simplified);
+        } catch (e2) {
+            console.error('Worker: Critical failure in postMessage', e2);
+        }
+    }
+}
+
 self.onmessage = async (event) => {
   const { type, code, id, isTest } = event.data;
 
   if (type === 'init') {
     try {
       await initPyodide(isTest);
-      self.postMessage({ type: 'init-completed', id });
+      sendToMain({ type: 'init-completed', id });
     } catch (error: any) {
       console.error('Worker init error:', error);
-      self.postMessage({ type: 'error', error: error.message, id });
+      sendToMain({ type: 'error', error: String(error.message || error), id });
     }
     return;
   }
 
   if (type === 'evaluate') {
-    if (!pyodide) {
-      await initPyodide();
-    }
+    if (!pyodide) await initPyodide();
 
     let stdout = '';
     let stderr = '';
 
-    if (pyodide) {
-      pyodide.setStdout({
-        batched: (str) => {
-          stdout += str + '\n';
-        }
-      });
-      pyodide.setStderr({
-        batched: (str) => {
-          stderr += str + '\n';
-        }
-      });
+    pyodide.setStdout({ batched: (str: string) => { stdout += str + '\n'; } });
+    pyodide.setStderr({ batched: (str: string) => { stderr += str + '\n'; } });
 
-      try {
-        let processedCode = code;
-        if (code.trim().endsWith('plt.show()')) {
-          processedCode = code.trim();
-        }
-
-        let result = await pyodide.runPythonAsync(processedCode);
-
-        let formats: { [key: string]: string } = {};
+    try {
+        let result = await pyodide.runPythonAsync(code);
         
-        const pyRepresentations = pyodide.globals.get('_get_representations');
-        const pyFormats = pyRepresentations(result);
-        formats = pyFormats.toJs();
-        pyFormats.destroy();
-        pyRepresentations.destroy();
+        let formats: any = {};
+        let metadata: any = {};
+        
+        try {
+            const pyRepr = pyodide.globals.get('_get_representations');
+            const pyResultProxy = pyRepr(result);
+            formats = safeClone(pyResultProxy);
+            if (pyResultProxy && pyResultProxy.destroy) pyResultProxy.destroy();
+            pyRepr.destroy();
 
-        // Introspect code
-        const pyIntrospect = pyodide.globals.get('_introspect_code');
-        const pyMetadata = pyIntrospect(code);
-        const metadata = pyMetadata.toJs();
-        pyMetadata.destroy();
-        pyIntrospect.destroy();
-
-        if (result !== null && result !== undefined) {
-          if (typeof result === 'object' && typeof result.toJs === 'function') {
-            const jsResult = result.toJs();
-            result.destroy();
-            result = jsResult;
-          }
+            const pyIntrospect = pyodide.globals.get('_introspect_code');
+            const pyMetadataProxy = pyIntrospect(code);
+            metadata = safeClone(pyMetadataProxy);
+            if (pyMetadataProxy && pyMetadataProxy.destroy) pyMetadataProxy.destroy();
+            pyIntrospect.destroy();
+        } catch (e) {
+            console.error('Worker: Post-processing error:', e);
         }
 
-        self.postMessage({
-          type: 'evaluate-completed',
-          id,
-          stdout,
-          stderr,
-          formats,
-          metadata,
-          result: result !== undefined && result !== null ? String(result) : undefined
+        const finalResult = safeClone(result);
+        if (result && result.destroy) result.destroy();
+
+        sendToMain({
+            type: 'evaluate-completed',
+            id,
+            stdout: String(stdout),
+            stderr: String(stderr),
+            formats,
+            metadata,
+            result: finalResult !== undefined ? String(finalResult) : undefined,
+            error: undefined
         });
-      } catch (e: any) {
-        self.postMessage({
-          type: 'evaluate-completed',
-          id,
-          stdout,
-          stderr,
-          error: e.message
+
+    } catch (e: any) {
+        console.error('Worker: Evaluation error caught in catch:', e);
+        // CRITICAL: Explicitly stringify the error here!
+        const errorMessage = String(e.message || e);
+        
+        sendToMain({
+            type: 'evaluate-completed',
+            id,
+            stdout: String(stdout),
+            stderr: String(stderr),
+            formats: {},
+            metadata: {},
+            result: undefined,
+            error: errorMessage
         });
-      }
     }
   }
 };

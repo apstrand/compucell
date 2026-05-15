@@ -13,7 +13,8 @@
 
   let editorContainer: HTMLElement;
   let view: EditorView;
-  let result: EvaluationResult | null = null;
+  // Initialize with a safe empty result to avoid null-pointer errors in template
+  let result: EvaluationResult = { stdout: '', stderr: '', formats: {}, metadata: {} };
   let running = false;
   let autoRun = localStorage.getItem(`autoRun-${id}`) === 'true';
   let isStale = false;
@@ -101,22 +102,41 @@
   });
 
   async function runCode(manual = true) {
+    console.log('CodeCell: runCode called, manual:', manual);
     if (running) return;
     running = true;
     isManualRun = manual;
+    
     try {
       const code = view.state.doc.toString();
+      console.log('CodeCell: Evaluating code:', code.substring(0, 30));
       const newResult = await evaluator.evaluate(code);
+      console.log('CodeCell: Received result:', newResult);
       
-      if (!manual && newResult.error && !result?.error) {
+      // If auto-running and there's an error, don't update the UI yet (unless we're already showing an error)
+      if (!manual && newResult.error && !result.error) {
         isStale = true;
       } else {
-        result = newResult;
+        result = {
+            stdout: newResult.stdout || '',
+            stderr: newResult.stderr || '',
+            formats: newResult.formats || {},
+            metadata: newResult.metadata || {},
+            result: newResult.result,
+            error: newResult.error
+        };
         isStale = false;
       }
     } catch (e: any) {
+      console.error('CodeCell: Evaluation fatal error:', e);
       if (manual) {
-        result = { stdout: '', stderr: '', error: e.message };
+        result = { 
+            stdout: '', 
+            stderr: '', 
+            error: String(e.message || e),
+            formats: {},
+            metadata: {}
+        };
         isStale = false;
       }
     } finally {
@@ -143,16 +163,23 @@
     </div>
   </div>
   
-  {#if result && (result.stdout || result.stderr || result.error || (result.result !== undefined && result.result !== 'undefined'))}
-    <div class="output-area" class:stale={isStale}>
+  {#if (result && (result.stdout || result.stderr || result.error || (result.result !== undefined && result.result !== 'undefined' && result.result !== null) || (result.formats && Object.keys(result.formats).length > 0))) || running}
+    <div class="output-area" class:stale={isStale || running}>
+      {#if running}
+        <div class="loading-status">
+          <span class="spinner-tiny"></span> 
+          {#if !result?.stdout && !result?.result}Initializing engine...{:else}Running...{/if}
+        </div>
+      {/if}
+
       {#if result.stdout}
-        <div class="output-line stdout">{result.stdout}</div>
+        <div class="output-line stdout">{result?.stdout}</div>
       {/if}
       {#if result.stderr}
-        <div class="output-line stderr">{result.stderr}</div>
+        <div class="output-line stderr">{result?.stderr}</div>
       {/if}
       {#if result.error}
-        <div class="output-line error">{result.error}</div>
+        <div class="output-line error">{result?.error}</div>
       {/if}
       
       {#if result.formats}
@@ -170,10 +197,10 @@
         {/if}
       {/if}
 
-      {#if result.result !== undefined && result.result !== 'undefined' && (!result.formats || (!result.formats['text/html'] && !result.formats['image/png']))}
+      {#if result.result !== undefined && result.result !== 'undefined' && result.result !== null && (!result.formats || (!result.formats['text/html'] && !result.formats['image/png']))}
         <div class="result-line">
           <span class="out-prefix">Out:</span>
-          <pre class="result-value">{result.result}</pre>
+          <pre class="result-value">{result?.result}</pre>
         </div>
       {/if}
 
@@ -360,4 +387,24 @@
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
+
+  .loading-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+  }
+  .spinner-tiny {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ccc;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
 </style>
