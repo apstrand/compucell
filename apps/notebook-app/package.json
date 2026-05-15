@@ -29,6 +29,6 @@
     "@types/marked": "^5.0.2",
     "codemirror": "^6.0.2",
     "marked": "^18.0.3",
-    "pyodide": "^0.29.3"
+    "pyodide": "0.26.4"
   }
 }

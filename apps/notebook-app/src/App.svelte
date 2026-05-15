@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Notebook, PyodideEvaluator, JavaScriptEvaluator, parseMarkdownNotebook } from '@coding-machine/notebook-core';
+  import { Notebook, PyodideEvaluator, JavaScriptEvaluator, parseMarkdownNotebook, CodeCell } from '@coding-machine/notebook-core';
   import type { Notebook as NotebookType, EvaluatorMap } from '@coding-machine/notebook-core';
   import { onMount } from 'svelte';
 
@@ -13,7 +13,7 @@
 
   let notebook: NotebookType | null = null;
   let initialized = false;
-  let isTest = typeof window !== 'undefined' && window.location.search.includes('test=true');
+  let isTest = typeof window !== 'undefined' && (window.location.search.includes('test=true') || window.location.pathname.includes('test'));
 
   onMount(async () => {
     // 1. Initialize engines
@@ -22,12 +22,14 @@
     console.log('App: Evaluators initialized.');
     
     // 2. Fetch and parse tutorial
-    try {
-      const res = await fetch('/tutorials/tutorial-features.md');
-      const md = await res.text();
-      notebook = parseMarkdownNotebook(md, 'features');
-    } catch (e) {
-      console.error('Failed to load tutorial', e);
+    if (!isTest) {
+        try {
+          const res = await fetch('/tutorials/tutorial-features.md');
+          const md = await res.text();
+          notebook = parseMarkdownNotebook(md, 'features');
+        } catch (e) {
+          console.error('Failed to load tutorial', e);
+        }
     }
     
     initialized = true;
@@ -40,19 +42,25 @@
 </script>
 
 <main>
-  {#if notebook}
+  {#if notebook && !isTest}
     <header>
       <h1>{notebook.title}</h1>
       <button on:click={resetNotebook} class="reset-button">Reset Progress</button>
     </header>
   {/if}
   
-  {#if initialized && notebook}
-    <Notebook {notebook} {evaluators} />
+  {#if initialized}
+    {#if isTest}
+      <div class="test-container">
+        <CodeCell evaluator={pyEvaluator} id="test-cell" initialCode="1+1" />
+      </div>
+    {:else if notebook}
+      <Notebook {notebook} {evaluators} />
+    {/if}
   {:else}
     <div class="loading">
       <div class="spinner-large"></div>
-      <p>Initializing environment... (loading Pandas, Matplotlib, Plotly)</p>
+      <p>Initializing environment... (this may take a moment)</p>
     </div>
   {/if}
 </main>

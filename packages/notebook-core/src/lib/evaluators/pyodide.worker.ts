@@ -1,11 +1,40 @@
+// ABSOLUTE TOP OF THE WORKER
+// We MUST provide a process object that doesn't trigger Node.js paths.
+// Pyodide asm.js environment detection is extremely sensitive.
+(function() {
+    const g: any = typeof self !== 'undefined' ? self : globalThis;
+    
+    // Completely mask any Node-like properties
+    const safeProcess = {
+        env: { NODE_DEBUG: undefined },
+        versions: {},
+        platform: 'browser',
+        browser: true
+    };
+    
+    try {
+        Object.defineProperty(g, 'process', {
+            get: () => safeProcess,
+            set: () => {},
+            configurable: true
+        });
+    } catch (e) {
+        g.process = safeProcess;
+    }
+    
+    g.IN_NODE = false;
+    g.global = g;
+})();
+
 import { loadPyodide, type PyodideInterface } from 'pyodide';
 
 let pyodide: PyodideInterface | null = null;
 
 async function initPyodide(isTest = false) {
   if (pyodide) return;
+  
   pyodide = await loadPyodide({
-    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/'
+    indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
   });
   
   if (!isTest) {
@@ -114,6 +143,7 @@ self.onmessage = async (event) => {
       await initPyodide(isTest);
       self.postMessage({ type: 'init-completed', id });
     } catch (error: any) {
+      console.error('Worker init error:', error);
       self.postMessage({ type: 'error', error: error.message, id });
     }
     return;
@@ -191,4 +221,3 @@ self.onmessage = async (event) => {
     }
   }
 };
-
