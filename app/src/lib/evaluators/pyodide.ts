@@ -1,61 +1,60 @@
-import { loadPyodide, type PyodideInterface } from 'pyodide';
 import type { Evaluator, EvaluationResult } from './types';
 
 export class PyodideEvaluator implements Evaluator {
-  private pyodide: PyodideInterface | null = null;
-  private stdout: string = '';
-  private stderr: string = '';
+  private worker: Worker | null = null;
+  private pendingResolves: Map<string, (result: any) => void> = new Map();
+  private initialized: Promise<void> | null = null;
 
   async initialize(): Promise<void> {
-    if (this.pyodide) return;
+    if (this.initialized) return this.initialized;
 
-    this.pyodide = await loadPyodide({
-      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/'
+    this.initialized = new Promise((resolve, reject) => {
+      // Vite handles ?worker import
+      import('./pyodide.worker?worker').then(({ default: PyodideWorker }) => {
+        this.worker = new PyodideWorker();
+        const id = Math.random().toString(36).substring(7);
+
+        const handleInit = (event: MessageEvent) => {
+          if (event.data.type === 'init-completed' && event.data.id === id) {
+            this.worker?.removeEventListener('message', handleInit);
+            resolve();
+          } else if (event.data.type === 'error' && event.data.id === id) {
+            this.worker?.removeEventListener('message', handleInit);
+            reject(new Error(event.data.error));
+          }
+        };
+
+        this.worker.addEventListener('message', handleInit);
+        
+        // Setup persistent message handler for evaluations
+        this.worker.addEventListener('message', (event) => {
+          const { type, id, ...data } = event.data;
+          if (type === 'evaluate-completed') {
+            const resolver = this.pendingResolves.get(id);
+            if (resolver) {
+              resolver(data);
+              this.pendingResolves.delete(id);
+            }
+          }
+        });
+
+        this.worker.postMessage({ type: 'init', id });
+      }).catch(reject);
     });
+
+    return this.initialized;
   }
 
   async evaluate(code: string): Promise<EvaluationResult> {
-    if (!this.pyodide) {
-      await this.initialize();
-    }
+    await this.initialize();
+    
+    if (!this.worker) throw new Error('Worker not initialized');
 
-    this.stdout = '';
-    this.stderr = '';
-
-    if (this.pyodide) {
-      this.pyodide.setStdout({
-        batched: (str) => {
-          this.stdout += str + '\n';
-        }
-      });
-      this.pyodide.setStderr({
-        batched: (str) => {
-          this.stderr += str + '\n';
-        }
-      });
-
-      try {
-        let result = await this.pyodide.runPythonAsync(code);
-        let finalResult = result;
-        if (result !== null && typeof result === 'object' && typeof result.toJs === 'function') {
-          finalResult = result.toJs();
-          result.destroy();
-        }
-        
-        return {
-          stdout: this.stdout,
-          stderr: this.stderr,
-          result: finalResult !== undefined ? String(finalResult) : undefined
-        };
-      } catch (e: any) {
-        return {
-          stdout: this.stdout,
-          stderr: this.stderr,
-          error: e.message
-        };
-      }
-    }
-
-    throw new Error('Pyodide not initialized');
+    const id = Math.random().toString(36).substring(7);
+    
+    return new Promise((resolve) => {
+      this.pendingResolves.set(id, resolve);
+      this.worker?.postMessage({ type: 'evaluate', code, id });
+    });
   }
 }
