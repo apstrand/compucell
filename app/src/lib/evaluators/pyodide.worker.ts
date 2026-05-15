@@ -44,10 +44,24 @@ self.onmessage = async (event) => {
 
       try {
         let result = await pyodide.runPythonAsync(code);
-        let finalResult = result;
-        if (result !== null && typeof result === 'object' && typeof result.toJs === 'function') {
-          finalResult = result.toJs();
-          result.destroy();
+        let formats: { [key: string]: string } = {};
+
+        if (result !== null && result !== undefined) {
+          // Check for rich representations
+          if (typeof result === 'object') {
+            if (typeof result._repr_html_ === 'function') {
+              formats['text/html'] = result._repr_html_();
+            }
+            if (typeof result._repr_png_ === 'function') {
+              formats['image/png'] = result._repr_png_();
+            }
+          }
+
+          if (typeof result.toJs === 'function') {
+            const jsResult = result.toJs();
+            result.destroy();
+            result = jsResult;
+          }
         }
 
         self.postMessage({
@@ -55,7 +69,8 @@ self.onmessage = async (event) => {
           id,
           stdout,
           stderr,
-          result: finalResult !== undefined ? String(finalResult) : undefined
+          formats,
+          result: result !== undefined ? String(result) : undefined
         });
       } catch (e: any) {
         self.postMessage({

@@ -6,6 +6,7 @@ export interface EvaluationResult {
   stderr: string;
   result?: any;
   error?: string;
+  formats?: { [mimeType: string]: string };
 }
 
 /**

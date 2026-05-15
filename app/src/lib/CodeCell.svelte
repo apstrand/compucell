@@ -143,7 +143,21 @@
       {#if result.error}
         <div class="output-line error">{result.error}</div>
       {/if}
-      {#if result.result !== undefined && result.result !== 'undefined'}
+      
+      {#if result.formats}
+        {#if result.formats['text/html']}
+          <div class="rich-output html-output">
+            {@html result.formats['text/html']}
+          </div>
+        {/if}
+        {#if result.formats['image/png']}
+          <div class="rich-output image-output">
+            <img src="data:image/png;base64,{result.formats['image/png']}" alt="Python Output" />
+          </div>
+        {/if}
+      {/if}
+
+      {#if result.result !== undefined && result.result !== 'undefined' && (!result.formats || (!result.formats['text/html'] && !result.formats['image/png']))}
         <div class="result-line">
           <span class="out-prefix">Out:</span>
           <pre class="result-value">{result.result}</pre>
@@ -249,6 +263,19 @@
     padding: 0.5rem;
     border-radius: 4px;
     margin: 0.5rem 0;
+  }
+  
+  .rich-output {
+    margin-top: 0.5rem;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 0.5rem;
+    overflow: auto;
+  }
+  .image-output img {
+    max-width: 100%;
+    height: auto;
   }
   
   .result-line {

@@ -16,7 +16,10 @@
   <h1>Python Learning App</h1>
   
   {#if initialized}
-    <CodeCell {evaluator} initialCode={`print('Hello from Pyodide!')\n2 + 2`} />
+    <CodeCell {evaluator} id="cell-1" initialCode={`print('Hello from Pyodide!')\n2 + 2`} />
+    
+    <h2>Rich Output Demo</h2>
+    <CodeCell {evaluator} id="cell-2" initialCode={`class StyledBox:\n    def _repr_html_(self):\n        return '<div style="background: #ffeb3b; padding: 20px; border-radius: 10px; border: 2px solid #fbc02d; text-align: center;"><b>I am an HTML representation!</b></div>'\n\nStyledBox()`} />
   {:else}
     <p>Initializing Python environment...</p>
   {/if}
