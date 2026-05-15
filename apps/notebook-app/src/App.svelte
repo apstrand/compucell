@@ -1,9 +1,7 @@
 <script lang="ts">
-  import Notebook from './lib/Notebook.svelte';
-  import { PyodideEvaluator } from './lib/evaluators/pyodide';
-  import { JavaScriptEvaluator } from './lib/evaluators/javascript';
+  import { Notebook, PyodideEvaluator, JavaScriptEvaluator } from '@coding-machine/notebook-core';
+  import type { Notebook as NotebookType, EvaluatorMap } from '@coding-machine/notebook-core';
   import { onMount } from 'svelte';
-  import type { Notebook as NotebookType, EvaluatorMap } from './lib/types';
 
   const pyEvaluator = new PyodideEvaluator();
   const jsEvaluator = new JavaScriptEvaluator();

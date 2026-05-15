@@ -1,0 +1,18 @@
+syntax: glob
+node_modules
+dist
+dist-ssr
+*.local
+.tmp
+.vscode/*
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
