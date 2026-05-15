@@ -23,9 +23,9 @@
     
     // 2. Fetch and parse tutorial
     try {
-      const res = await fetch('/tutorials/tutorial-1.md');
+      const res = await fetch('/tutorials/tutorial-features.md');
       const md = await res.text();
-      notebook = parseMarkdownNotebook(md, 'tutorial-1');
+      notebook = parseMarkdownNotebook(md, 'features');
     } catch (e) {
       console.error('Failed to load tutorial', e);
     }
