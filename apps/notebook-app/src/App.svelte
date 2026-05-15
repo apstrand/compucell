@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Notebook, PyodideEvaluator, JavaScriptEvaluator } from '@coding-machine/notebook-core';
+  import { Notebook, PyodideEvaluator, JavaScriptEvaluator, parseMarkdownNotebook } from '@coding-machine/notebook-core';
   import type { Notebook as NotebookType, EvaluatorMap } from '@coding-machine/notebook-core';
   import { onMount } from 'svelte';
 
@@ -21,10 +21,11 @@
     await Promise.all([pyEvaluator.initialize(), jsEvaluator.initialize()]);
     console.log('App: Evaluators initialized.');
     
-    // 2. Fetch tutorial
+    // 2. Fetch and parse tutorial
     try {
-      const res = await fetch('/tutorials/tutorial-1.json');
-      notebook = await res.json();
+      const res = await fetch('/tutorials/tutorial-1.md');
+      const md = await res.text();
+      notebook = parseMarkdownNotebook(md, 'tutorial-1');
     } catch (e) {
       console.error('Failed to load tutorial', e);
     }

@@ -6,3 +6,4 @@ export * from './lib/evaluators/pyodide';
 export * from './lib/evaluators/javascript';
 export * from './lib/evaluators/micropython';
 export * from './lib/evaluators/types';
+export * from './lib/parser';
