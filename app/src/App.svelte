@@ -24,9 +24,14 @@
 
 <style>
   main {
-    max-width: 800px;
+    max-width: 1100px;
+    width: 95%;
     margin: 0 auto;
     padding: 2rem;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
   h1 {
     color: #333;

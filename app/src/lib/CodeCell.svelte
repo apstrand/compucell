@@ -9,17 +9,21 @@
 
   export let evaluator: Evaluator;
   export let initialCode: string = '';
+  export let id: string = 'cell-1';
 
   let editorContainer: HTMLElement;
   let view: EditorView;
   let result: EvaluationResult | null = null;
   let running = false;
-  let autoRun = false;
+  let autoRun = localStorage.getItem(`autoRun-${id}`) === 'true';
   let isStale = false;
   let isManualRun = false;
   let debounceTimer: ReturnType<typeof setTimeout>;
 
   onMount(() => {
+    const savedCode = localStorage.getItem(`code-${id}`);
+    const codeToLoad = savedCode !== null ? savedCode : initialCode;
+
     // Explicitly handle Shift+Enter to ensure it works reliably across environments
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && e.shiftKey) {
@@ -31,7 +35,7 @@
     editorContainer.addEventListener('keydown', handleKeydown, true);
 
     const startState = EditorState.create({
-      doc: initialCode,
+      doc: codeToLoad,
       extensions: [
         basicSetup,
         python(),
@@ -41,6 +45,8 @@
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
+            const newCode = update.state.doc.toString();
+            localStorage.setItem(`code-${id}`, newCode);
             isStale = true;
             if (autoRun) {
               clearTimeout(debounceTimer);
@@ -49,7 +55,7 @@
           }
         }),
         EditorView.theme({
-          "&": { height: "auto", minHeight: "100px", fontSize: "14px" },
+          "&": { height: "250px", fontSize: "14px" },
           ".cm-scroller": { overflow: "auto" },
           ".cm-content": { fontFamily: "var(--mono)" }
         })
@@ -61,10 +67,19 @@
       parent: editorContainer
     });
 
+    // Initial run if there was saved code or initial code
+    if (codeToLoad) {
+      runCode(false);
+    }
+
     return () => {
       editorContainer.removeEventListener('keydown', handleKeydown, true);
     };
   });
+
+  $: {
+    localStorage.setItem(`autoRun-${id}`, String(autoRun));
+  }
 
   onDestroy(() => {
     if (view) {
@@ -147,6 +162,8 @@
     background: var(--bg);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     text-align: left;
+    width: 100%;
+    box-sizing: border-box;
   }
   .editor-container {
     position: relative;
@@ -213,6 +230,8 @@
     font-family: var(--mono);
     font-size: 0.9rem;
     transition: opacity 0.2s;
+    max-height: 120px;
+    overflow-y: auto;
   }
   .output-area.stale {
     opacity: 0.5;
