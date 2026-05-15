@@ -38,7 +38,8 @@ export class PyodideEvaluator implements Evaluator {
           }
         });
 
-        this.worker.postMessage({ type: 'init', id });
+        const isTest = typeof window !== 'undefined' && window.location.search.includes('test=true');
+        this.worker.postMessage({ type: 'init', id, isTest });
       }).catch(reject);
     });
 

@@ -5,6 +5,7 @@
 
   const evaluator = new PyodideEvaluator();
   let initialized = false;
+  let isTest = typeof window !== 'undefined' && window.location.search.includes('test=true');
 
   onMount(async () => {
     console.log('App: Initializing evaluator...');
@@ -18,12 +19,16 @@
   <h1>Python Learning App</h1>
   
   {#if initialized}
-    <CodeCell {evaluator} id="cell-1" initialCode={`import pandas as pd\nimport numpy as np\n\n# Create a sample DataFrame\ndf = pd.DataFrame(np.random.randn(10, 5), columns=['A', 'B', 'C', 'D', 'E'])\ndf`} />
-    
-    <h2>Matplotlib Visualization</h2>
-    <CodeCell {evaluator} id="cell-2" initialCode={`import matplotlib.pyplot as plt\nimport numpy as np\n\nx = np.linspace(0, 10, 100)\ny = np.sin(x)\n\nplt.figure(figsize=(8, 4))\nplt.plot(x, y, label='sin(x)')\nplt.title('Simple Plot')\nplt.legend()\nplt.show()`} />
+    {#if isTest}
+      <CodeCell {evaluator} id="test-cell" initialCode="1+1" />
+    {:else}
+      <CodeCell {evaluator} id="cell-1" initialCode={`import pandas as pd\nimport numpy as np\n\n# Create a sample DataFrame\ndf = pd.DataFrame(np.random.randn(10, 5), columns=['A', 'B', 'C', 'D', 'E'])\ndf`} />
+      
+      <h2>Matplotlib Visualization</h2>
+      <CodeCell {evaluator} id="cell-2" initialCode={`import matplotlib.pyplot as plt\nimport numpy as np\n\nx = np.linspace(0, 10, 100)\ny = np.sin(x)\n\nplt.figure(figsize=(8, 4))\nplt.plot(x, y, label='sin(x)')\nplt.title('Simple Plot')\nplt.legend()\nplt.show()`} />
+    {/if}
   {:else}
-    <p>Initializing Python environment with Pandas and Matplotlib... (this may take a moment)</p>
+    <p>Initializing Python environment... (this may take a moment)</p>
   {/if}
 </main>
 

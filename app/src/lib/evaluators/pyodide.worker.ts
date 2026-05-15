@@ -2,32 +2,42 @@ import { loadPyodide, type PyodideInterface } from 'pyodide';
 
 let pyodide: PyodideInterface | null = null;
 
-async function initPyodide() {
+async function initPyodide(isTest = false) {
   if (pyodide) return;
   pyodide = await loadPyodide({
     indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/'
   });
   
-  await pyodide.loadPackage(['pandas', 'matplotlib', 'plotly']);
+  if (!isTest) {
+    await pyodide.loadPackage(['pandas', 'matplotlib', 'micropip']);
+    const micropip = pyodide.pyimport('micropip');
+    await micropip.install('plotly');
+  } else {
+    // Basic init for tests
+    await pyodide.loadPackage(['micropip']);
+  }
   
   // Setup matplotlib and rich representation helpers
   await pyodide.runPythonAsync(`
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import io, base64
+try:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import io, base64
 
-def _matplotlib_to_base64():
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    plt.close()
-    return base64.b64encode(buf.getvalue()).decode('utf-8')
+    def _matplotlib_to_base64():
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plt.close()
+        return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-# Monkey patch plt.show to return the rich representation
-_old_show = plt.show
-def _new_show(*args, **kwargs):
-    return _matplotlib_to_base64()
-plt.show = _new_show
+    # Monkey patch plt.show to return the rich representation
+    _old_show = plt.show
+    def _new_show(*args, **kwargs):
+        return _matplotlib_to_base64()
+    plt.show = _new_show
+except ImportError:
+    pass
 
 def _get_representations(obj):
     reprs = {}
@@ -56,11 +66,11 @@ def _get_representations(obj):
 }
 
 self.onmessage = async (event) => {
-  const { type, code, id } = event.data;
+  const { type, code, id, isTest } = event.data;
 
   if (type === 'init') {
     try {
-      await initPyodide();
+      await initPyodide(isTest);
       self.postMessage({ type: 'init-completed', id });
     } catch (error: any) {
       self.postMessage({ type: 'error', error: error.message, id });

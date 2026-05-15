@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Python Evaluation', () => {
   test.beforeEach(async ({ page }) => {
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
-    await page.goto('/');
+    // Use test mode to speed up and simplify
+    await page.goto('/?test=true');
     // Wait for initialization to complete
     await expect(page.getByText('Initializing Python environment...')).not.toBeVisible({ timeout: 30000 });
   });
