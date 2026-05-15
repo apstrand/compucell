@@ -8,10 +8,9 @@ async function initPyodide() {
     indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.29.3/full/'
   });
   
-  // Load common data science packages
-  await pyodide.loadPackage(['pandas', 'matplotlib']);
+  await pyodide.loadPackage(['pandas', 'matplotlib', 'plotly']);
   
-  // Setup matplotlib to use a non-interactive backend and provide a helper for rich output
+  // Setup matplotlib and rich representation helpers
   await pyodide.runPythonAsync(`
 import matplotlib
 matplotlib.use("Agg")
@@ -24,11 +23,35 @@ def _matplotlib_to_base64():
     plt.close()
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-# Monkey patch plt.show to return the rich representation if called
+# Monkey patch plt.show to return the rich representation
 _old_show = plt.show
 def _new_show(*args, **kwargs):
     return _matplotlib_to_base64()
 plt.show = _new_show
+
+def _get_representations(obj):
+    reprs = {}
+    if obj is None:
+        return reprs
+        
+    # Check for common Jupyter representation methods
+    if hasattr(obj, "_repr_html_"):
+        try:
+            reprs["text/html"] = obj._repr_html_()
+        except Exception:
+            pass
+            
+    if hasattr(obj, "_repr_png_"):
+        try:
+            reprs["image/png"] = obj._repr_png_()
+        except Exception:
+            pass
+            
+    # Specialized handling for patched plt.show()
+    if isinstance(obj, str) and len(obj) > 100 and not " " in obj:
+        reprs["image/png"] = obj
+        
+    return reprs
   `);
 }
 
@@ -66,38 +89,23 @@ self.onmessage = async (event) => {
       });
 
       try {
-        // Special check for matplotlib plt.show() at the end of the code
         let processedCode = code;
         if (code.trim().endsWith('plt.show()')) {
-          // Wrap it to ensure it's the returned result
           processedCode = code.trim();
         }
 
         let result = await pyodide.runPythonAsync(processedCode);
+
         let formats: { [key: string]: string } = {};
+        
+        const pyRepresentations = pyodide.globals.get('_get_representations');
+        const pyFormats = pyRepresentations(result);
+        formats = pyFormats.toJs();
+        pyFormats.destroy();
+        pyRepresentations.destroy();
 
         if (result !== null && result !== undefined) {
-          // Check for rich representations
-          if (typeof result === 'object') {
-            if (typeof result._repr_html_ === 'function') {
-              formats['text/html'] = result._repr_html_();
-            }
-            if (typeof result._repr_png_ === 'function') {
-              formats['image/png'] = result._repr_png_();
-            }
-            // Handle our custom matplotlib string return
-            if (typeof result === 'string' && result.length > 1000 && !result.includes(' ')) {
-                // Heuristic: looks like a base64 image
-                formats['image/png'] = result;
-                result = undefined;
-            }
-          } else if (typeof result === 'string' && result.length > 100 && /^[A-Za-z0-9+/=]+$/.test(result)) {
-              // It's likely the base64 from our patched plt.show()
-              formats['image/png'] = result;
-              result = undefined;
-          }
-
-          if (result && typeof result.toJs === 'function') {
+          if (typeof result === 'object' && typeof result.toJs === 'function') {
             const jsResult = result.toJs();
             result.destroy();
             result = jsResult;
@@ -110,7 +118,7 @@ self.onmessage = async (event) => {
           stdout,
           stderr,
           formats,
-          result: result !== undefined ? String(result) : undefined
+          result: result !== undefined && result !== null ? String(result) : undefined
         });
       } catch (e: any) {
         self.postMessage({
@@ -124,3 +132,4 @@ self.onmessage = async (event) => {
     }
   }
 };
+

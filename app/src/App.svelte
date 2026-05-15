@@ -7,7 +7,9 @@
   let initialized = false;
 
   onMount(async () => {
+    console.log('App: Initializing evaluator...');
     await evaluator.initialize();
+    console.log('App: Evaluator initialized.');
     initialized = true;
   });
 </script>

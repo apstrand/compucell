@@ -20,11 +20,25 @@
   let isManualRun = false;
   let debounceTimer: ReturnType<typeof setTimeout>;
 
+  /**
+   * Action to execute script tags in HTML content
+   */
+  function executeScripts(node: HTMLElement) {
+    const scripts = node.querySelectorAll('script');
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) =>
+        newScript.setAttribute(attr.name, attr.value)
+      );
+      newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+      oldScript.parentNode?.replaceChild(newScript, oldScript);
+    });
+  }
+
   onMount(() => {
     const savedCode = localStorage.getItem(`code-${id}`);
     const codeToLoad = savedCode !== null ? savedCode : initialCode;
 
-    // Explicitly handle Shift+Enter to ensure it works reliably across environments
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
@@ -67,7 +81,6 @@
       parent: editorContainer
     });
 
-    // Initial run if there was saved code or initial code
     if (codeToLoad) {
       runCode(false);
     }
@@ -95,9 +108,7 @@
       const code = view.state.doc.toString();
       const newResult = await evaluator.evaluate(code);
       
-      // If auto-running and there's an error, don't update the UI yet (unless we're already showing an error)
       if (!manual && newResult.error && !result?.error) {
-        // Keep previous result but mark as stale
         isStale = true;
       } else {
         result = newResult;
@@ -146,9 +157,11 @@
       
       {#if result.formats}
         {#if result.formats['text/html']}
-          <div class="rich-output html-output">
-            {@html result.formats['text/html']}
-          </div>
+          {#key result}
+            <div class="rich-output html-output" use:executeScripts>
+              {@html result.formats['text/html']}
+            </div>
+          {/key}
         {/if}
         {#if result.formats['image/png']}
           <div class="rich-output image-output">
@@ -244,7 +257,7 @@
     font-family: var(--mono);
     font-size: 0.9rem;
     transition: opacity 0.2s;
-    max-height: 120px;
+    max-height: 500px;
     overflow-y: auto;
   }
   .output-area.stale {
@@ -272,10 +285,13 @@
     border-radius: 4px;
     padding: 0.5rem;
     overflow: auto;
+    display: flex;
+    justify-content: center;
   }
   .image-output img {
     max-width: 100%;
     height: auto;
+    display: block;
   }
   
   .result-line {
