@@ -109,12 +109,14 @@
               {#if cell.type === 'markdown'}
                 <MarkdownCell id={cell.id} initialContent={cell.content} />
               {:else if cell.type === 'code'}
-                <div class="engine-badge {cell.engine}">{cell.engine}</div>
-                <CodeCell 
-                  evaluator={cell.engine === 'javascript' ? jsEvaluator : pyEvaluator} 
-                  id={cell.id} 
-                  initialCode={cell.content} 
-                />
+                <div class="code-cell-container">
+                  <div class="engine-badge {cell.engine}">{cell.engine}</div>
+                  <CodeCell 
+                    evaluator={cell.engine === 'javascript' ? jsEvaluator : pyEvaluator} 
+                    id={cell.id} 
+                    initialCode={cell.content} 
+                  />
+                </div>
               {/if}
             </div>
 
@@ -266,14 +268,24 @@
     border-color: #fecaca;
   }
 
+  .code-cell-container {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
   .engine-badge {
-    display: inline-block;
-    font-size: 0.7rem;
+    margin-top: 1rem;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    font-size: 0.65rem;
     text-transform: uppercase;
     font-weight: 800;
-    padding: 2px 6px;
+    padding: 8px 4px;
     border-radius: 4px;
-    margin-bottom: 4px;
+    letter-spacing: 0.1em;
+    min-width: 24px;
+    text-align: center;
   }
   .engine-badge.pyodide { background: #e0f2fe; color: #0369a1; }
   .engine-badge.javascript { background: #fef3c7; color: #92400e; }

@@ -2,7 +2,6 @@ import type { Evaluator, EvaluationResult } from './types';
 
 export class JavaScriptEvaluator implements Evaluator {
   async initialize(): Promise<void> {
-    // No initialization needed for basic JS
     return Promise.resolve();
   }
 
@@ -20,8 +19,14 @@ export class JavaScriptEvaluator implements Evaluator {
     };
 
     try {
-      // Use an IIFE with async support if needed
-      const result = await eval(`(async () => { return ${code} })()`);
+      // Try to evaluate as a single expression first
+      // If that fails, run as a script
+      let result;
+      try {
+        result = await eval(`(${code})`);
+      } catch (e) {
+        result = await eval(code);
+      }
       
       return {
         stdout,
