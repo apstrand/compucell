@@ -31,10 +31,18 @@
     console.log('App: Evaluator initialized.');
     initialized = true;
   });
+
+  function resetNotebook() {
+    localStorage.clear();
+    window.location.reload();
+  }
 </script>
 
 <main>
-  <h1>{notebook.title}</h1>
+  <header>
+    <h1>{notebook.title}</h1>
+    <button on:click={resetNotebook} class="reset-button">Reset Notebook</button>
+  </header>
   
   {#if initialized}
     {#if isTest}
@@ -62,9 +70,27 @@
     flex-direction: column;
     align-items: stretch;
   }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
   h1 {
     color: #333;
-    text-align: center;
-    margin-bottom: 2rem;
+    margin: 0;
+  }
+  .reset-button {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+  }
+  .reset-button:hover {
+    background: #d32f2f;
   }
 </style>
