@@ -87,6 +87,22 @@ def _get_representations(obj):
         reprs["image/png"] = obj
         
     return reprs
+
+def _introspect_code(code):
+    import ast
+    try:
+        tree = ast.parse(code)
+        defined_names = []
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        defined_names.append(target.id)
+            elif isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+                defined_names.append(node.name)
+        return {"defined_names": defined_names}
+    except Exception:
+        return {}
   `);
 }
 
@@ -139,6 +155,13 @@ self.onmessage = async (event) => {
         pyFormats.destroy();
         pyRepresentations.destroy();
 
+        // Introspect code
+        const pyIntrospect = pyodide.globals.get('_introspect_code');
+        const pyMetadata = pyIntrospect(code);
+        const metadata = pyMetadata.toJs();
+        pyMetadata.destroy();
+        pyIntrospect.destroy();
+
         if (result !== null && result !== undefined) {
           if (typeof result === 'object' && typeof result.toJs === 'function') {
             const jsResult = result.toJs();
@@ -153,6 +176,7 @@ self.onmessage = async (event) => {
           stdout,
           stderr,
           formats,
+          metadata,
           result: result !== undefined && result !== null ? String(result) : undefined
         });
       } catch (e: any) {

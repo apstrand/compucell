@@ -176,6 +176,17 @@
           <pre class="result-value">{result.result}</pre>
         </div>
       {/if}
+
+      {#if result.metadata && result.metadata.defined_names && result.metadata.defined_names.length > 0}
+        <div class="metadata-line">
+          <span class="meta-label">Defined:</span>
+          <div class="tags">
+            {#each result.metadata.defined_names as name}
+              <span class="tag">{name}</span>
+            {/each}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -310,6 +321,32 @@
     margin: 0;
     color: #333;
     white-space: pre-wrap;
+  }
+
+  .metadata-line {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+  }
+  .meta-label {
+    color: #666;
+    font-weight: bold;
+  }
+  .tags {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+  .tag {
+    background: #eef2ff;
+    color: #4f46e5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--mono);
   }
 
   .spinner {

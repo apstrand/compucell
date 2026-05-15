@@ -7,6 +7,7 @@ export interface EvaluationResult {
   result?: any;
   error?: string;
   formats?: { [mimeType: string]: string };
+  metadata?: Record<string, any>;
 }
 
 /**
