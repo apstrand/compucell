@@ -12,6 +12,22 @@ async function initPyodide(isTest = false) {
     await pyodide.loadPackage(['pandas', 'matplotlib', 'micropip']);
     const micropip = pyodide.pyimport('micropip');
     await micropip.install('plotly');
+    
+    // Configure plotly for pyodide
+    await pyodide.runPythonAsync(`
+import plotly.io as pio
+plotly_html_template = """
+<div id='{id}'></div>
+<script type='text/javascript'>
+    {script}
+    var layout = {layout};
+    var data = {data};
+    Plotly.newPlot('{id}', data, layout);
+</script>
+"""
+# Set a default renderer that works well with our setup
+pio.renderers.default = "notebook"
+    `);
   } else {
     // Basic init for tests
     await pyodide.loadPackage(['micropip']);
@@ -44,6 +60,15 @@ def _get_representations(obj):
     if obj is None:
         return reprs
         
+    # Specialized handling for Plotly figures
+    try:
+        import plotly.graph_objects as go
+        if isinstance(obj, go.Figure):
+            reprs["text/html"] = obj.to_html(full_html=False, include_plotlyjs=False)
+            return reprs
+    except ImportError:
+        pass
+
     # Check for common Jupyter representation methods
     if hasattr(obj, "_repr_html_"):
         try:

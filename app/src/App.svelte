@@ -2,10 +2,28 @@
   import CodeCell from './lib/CodeCell.svelte';
   import { PyodideEvaluator } from './lib/evaluators/pyodide';
   import { onMount } from 'svelte';
+  import type { Notebook } from './lib/types';
 
   const evaluator = new PyodideEvaluator();
   let initialized = false;
   let isTest = typeof window !== 'undefined' && window.location.search.includes('test=true');
+
+  let notebook: Notebook = {
+    id: 'tutorial-1',
+    title: 'Python Data Science Tutorial',
+    cells: [
+      {
+        id: 'cell-1',
+        type: 'code',
+        content: '# Use pandas to analyze data\nimport pandas as pd\nimport numpy as np\n\ndf = pd.DataFrame(np.random.randn(10, 5), columns=list("ABCDE"))\ndf'
+      },
+      {
+        id: 'cell-2',
+        type: 'code',
+        content: '# Create interactive plots with Plotly\nimport plotly.express as px\ndf = px.data.iris()\nfig = px.scatter(df, x="sepal_width", y="sepal_length", color="species")\nfig'
+      }
+    ]
+  };
 
   onMount(async () => {
     console.log('App: Initializing evaluator...');
@@ -16,16 +34,17 @@
 </script>
 
 <main>
-  <h1>Python Learning App</h1>
+  <h1>{notebook.title}</h1>
   
   {#if initialized}
     {#if isTest}
       <CodeCell {evaluator} id="test-cell" initialCode="1+1" />
     {:else}
-      <CodeCell {evaluator} id="cell-1" initialCode={`import pandas as pd\nimport numpy as np\n\n# Create a sample DataFrame\ndf = pd.DataFrame(np.random.randn(10, 5), columns=['A', 'B', 'C', 'D', 'E'])\ndf`} />
-      
-      <h2>Matplotlib Visualization</h2>
-      <CodeCell {evaluator} id="cell-2" initialCode={`import matplotlib.pyplot as plt\nimport numpy as np\n\nx = np.linspace(0, 10, 100)\ny = np.sin(x)\n\nplt.figure(figsize=(8, 4))\nplt.plot(x, y, label='sin(x)')\nplt.title('Simple Plot')\nplt.legend()\nplt.show()`} />
+      {#each notebook.cells as cell (cell.id)}
+        {#if cell.type === 'code'}
+          <CodeCell {evaluator} id={cell.id} initialCode={cell.content} />
+        {/if}
+      {/each}
     {/if}
   {:else}
     <p>Initializing Python environment... (this may take a moment)</p>
@@ -46,5 +65,6 @@
   h1 {
     color: #333;
     text-align: center;
+    margin-bottom: 2rem;
   }
 </style>
