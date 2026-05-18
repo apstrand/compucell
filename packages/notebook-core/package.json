@@ -8,13 +8,13 @@
     "./evaluators/*": "./src/lib/evaluators/*.ts"
   },
   "dependencies": {
-    "codemirror": "^6.0.1",
+    "@codemirror/commands": "^6.2.2",
     "@codemirror/lang-python": "^6.1.3",
     "@codemirror/state": "^6.2.0",
     "@codemirror/view": "^6.9.0",
-    "@codemirror/commands": "^6.2.2",
-    "pyodide": "^0.26.4",
-    "marked": "^12.0.0"
+    "codemirror": "^6.0.2",
+    "marked": "^12.0.0",
+    "pyodide": "^0.26.4"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
