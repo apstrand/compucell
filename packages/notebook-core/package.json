@@ -1,5 +1,5 @@
 {
-  "name": "@coding-machine/notebook-core",
+  "name": "@compucell/notebook-core",
   "version": "0.0.1",
   "type": "module",
   "main": "./src/index.ts",

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { Notebook, PyodideEvaluator, JavaScriptEvaluator, parseMarkdownNotebook, CodeCell } from '@coding-machine/notebook-core';
-  import type { Notebook as NotebookType, EvaluatorMap } from '@coding-machine/notebook-core';
+  import { Notebook, PyodideEvaluator, JavaScriptEvaluator, parseMarkdownNotebook, CodeCell } from '@compucell/notebook-core';
+  import type { Notebook as NotebookType, EvaluatorMap } from '@compucell/notebook-core';
   import { onMount } from 'svelte';
 
   const pyEvaluator = new PyodideEvaluator();

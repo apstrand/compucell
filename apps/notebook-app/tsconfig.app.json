@@ -7,7 +7,7 @@
     "moduleResolution": "bundler",
     "types": ["svelte", "vite/client"],
     "paths": {
-      "@coding-machine/notebook-core": ["../../packages/notebook-core/src/index.ts"]
+      "@compucell/notebook-core": ["../../packages/notebook-core/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.svelte"]

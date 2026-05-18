@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [svelte()],
   resolve: {
     alias: {
-      '@coding-machine/notebook-core': path.resolve(__dirname, '../../packages/notebook-core/src/index.ts')
+      '@compucell/notebook-core': path.resolve(__dirname, '../../packages/notebook-core/src/index.ts')
     }
   },
   server: {

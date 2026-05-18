@@ -1,5 +1,5 @@
 {
-  "name": "coding-machine",
+  "name": "compucell",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -9,5 +9,8 @@
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
+  },
+  "dependencies": {
+    "codemirror": "^6.0.2"
   }
 }

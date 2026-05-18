@@ -13,7 +13,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@coding-machine/notebook-core": ["packages/notebook-core/src/index.ts"]
+      "@compucell/notebook-core": ["packages/notebook-core/src/index.ts"]
     }
   }
 }

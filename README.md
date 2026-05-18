@@ -76,7 +76,7 @@ To create a new application using the framework:
 2.  **Configure Evaluators:**
     In your `App.svelte`, choose which engines to support:
     ```typescript
-    import { Notebook, PyodideEvaluator } from '@coding-machine/notebook-core';
+    import { Notebook, PyodideEvaluator } from '@compucell/notebook-core';
     
     const evaluators = {
       pyodide: new PyodideEvaluator()

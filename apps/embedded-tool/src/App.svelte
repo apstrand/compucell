@@ -4,8 +4,8 @@
     PyodideEvaluator, 
     JavaScriptEvaluator, 
     MicroPythonRemoteEvaluator 
-  } from '@coding-machine/notebook-core';
-  import type { Notebook as NotebookType, EvaluatorMap } from '@coding-machine/notebook-core';
+  } from '@compucell/notebook-core';
+  import type { Notebook as NotebookType, EvaluatorMap } from '@compucell/notebook-core';
   import { onMount } from 'svelte';
 
   let wsUrl = 'ws://192.168.4.1:8266';
