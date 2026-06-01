@@ -62,11 +62,15 @@
           <MarkdownCell id={`${notebook.id}-${cell.id}`} initialContent={cell.content} />
         {:else if cell.type === 'code'}
           <div class="code-cell-container">
-            <div class="engine-badge {cell.engine}">{cell.engine}</div>
-            <CodeCell 
-              evaluator={evaluators[cell.engine || 'pyodide']} 
-              id={`${notebook.id}-${cell.id}`} 
-              initialCode={cell.content} 
+            {#if !cell.metadata?.label}
+              <div class="engine-badge {cell.engine}">{cell.engine}</div>
+            {/if}
+            <CodeCell
+              evaluator={evaluators[cell.engine || 'pyodide']}
+              id={`${notebook.id}-${cell.id}`}
+              initialCode={cell.content}
+              collapsed={cell.metadata?.collapsed ?? false}
+              label={cell.metadata?.label ?? ''}
             />
           </div>
         {/if}

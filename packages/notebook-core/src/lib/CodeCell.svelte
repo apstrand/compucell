@@ -7,9 +7,11 @@
   import { defaultKeymap, indentWithTab } from '@codemirror/commands';
   import type { Evaluator, EvaluationResult } from './evaluators/types';
 
-  export let evaluator: Evaluator;
+  export let evaluator: Evaluator | undefined;
   export let initialCode: string = '';
   export let id: string = 'cell-1';
+  export let collapsed: boolean = false;
+  export let label: string = '';
 
   let editorContainer: HTMLElement;
   let view: EditorView;
@@ -20,6 +22,11 @@
   let isStale = false;
   let isManualRun = false;
   let debounceTimer: ReturnType<typeof setTimeout>;
+  let isCollapsed = collapsed;
+
+  $: statusOk = !result.error && (!!result.stdout || !!result.result ||
+    (result.formats != null && Object.keys(result.formats).length > 0));
+  $: statusErr = !!result.error;
 
   /**
    * Action to execute script tags in HTML content
@@ -104,9 +111,15 @@
   async function runCode(manual = true) {
     console.log('CodeCell: runCode called, manual:', manual);
     if (running) return;
+    if (!evaluator) {
+      if (manual) {
+        result = { stdout: '', stderr: '', error: 'No evaluator available. Connect to the device first.', formats: {}, metadata: {} };
+      }
+      return;
+    }
     running = true;
     isManualRun = manual;
-    
+
     try {
       const code = view.state.doc.toString();
       console.log('CodeCell: Evaluating code:', code.substring(0, 30));
@@ -146,7 +159,26 @@
 </script>
 
 <div class="code-cell">
-  <div class="editor-container">
+  {#if label}
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div class="cell-header" on:click={() => isCollapsed = !isCollapsed}>
+      <span class="cell-toggle">{isCollapsed ? '▶' : '▼'}</span>
+      <span class="cell-label">{label}</span>
+      <div class="cell-header-right">
+        {#if running}
+          <span class="spinner-tiny"></span>
+        {:else if statusErr}
+          <span class="status-dot status-err" title="Error">●</span>
+        {:else if statusOk}
+          <span class="status-dot status-ok" title="Ready">●</span>
+        {/if}
+        <button class="run-button-inline" on:click|stopPropagation={() => runCode(true)}
+          disabled={running} title="Run (Shift+Enter)">▶</button>
+      </div>
+    </div>
+  {/if}
+
+  <div class="editor-container" style:display={isCollapsed ? 'none' : 'flex'}>
     <div bind:this={editorContainer} class="editor"></div>
     <div class="side-controls">
       <button class="run-button" on:click={() => runCode(true)} disabled={running} title="Shift+Enter">
@@ -163,7 +195,7 @@
     </div>
   </div>
   
-  {#if (result && (result.stdout || result.stderr || result.error || (result.result !== undefined && result.result !== 'undefined' && result.result !== null) || (result.formats && Object.keys(result.formats).length > 0))) || running}
+  {#if !isCollapsed && ((result && (result.stdout || result.stderr || result.error || (result.result !== undefined && result.result !== 'undefined' && result.result !== null) || (result.formats && Object.keys(result.formats).length > 0))) || running)}
     <div class="output-area" class:stale={isStale || running}>
       {#if running}
         <div class="loading-status">
@@ -405,6 +437,62 @@
     border-top-color: #3b82f6;
     border-radius: 50%;
     animation: spin 1s linear infinite;
+  }
+
+  .cell-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    background: #f1f5f9;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+  }
+  .cell-header:hover {
+    background: #e8edf3;
+  }
+  .cell-toggle {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .cell-label {
+    flex: 1;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+  }
+  .cell-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .status-dot {
+    font-size: 0.65rem;
+  }
+  .status-ok  { color: #22c55e; }
+  .status-err { color: #ef4444; }
+  .run-button-inline {
+    padding: 1px 7px;
+    font-size: 0.75rem;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #4caf50;
+    line-height: 1.4;
+  }
+  .run-button-inline:hover:not(:disabled) {
+    background: #f0fdf4;
+    border-color: #4caf50;
+  }
+  .run-button-inline:disabled {
+    opacity: 0.5;
+    cursor: wait;
   }
 
 </style>
