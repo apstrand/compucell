@@ -28,6 +28,27 @@
     (result.formats != null && Object.keys(result.formats).length > 0));
   $: statusErr = !!result.error;
 
+  let _vegaReady: Promise<void> | null = null;
+  function ensureVega(): Promise<void> {
+    if ((window as any).vegaEmbed) return Promise.resolve();
+    if (!_vegaReady) {
+      const load = (src: string) => new Promise<void>((res, rej) => {
+        const s = document.createElement('script');
+        s.src = src; s.onload = () => res(); s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      _vegaReady = load('https://cdn.jsdelivr.net/npm/vega@6')
+        .then(() => load('https://cdn.jsdelivr.net/npm/vega-lite@6'))
+        .then(() => load('https://cdn.jsdelivr.net/npm/vega-embed@7'));
+    }
+    return _vegaReady;
+  }
+
+  function renderVega(node: HTMLElement, spec: string) {
+    ensureVega().then(() => (window as any).vegaEmbed(node, JSON.parse(spec), { actions: false }));
+    return { update: (s: string) => ensureVega().then(() => (window as any).vegaEmbed(node, JSON.parse(s), { actions: false })) };
+  }
+
   /**
    * Action to execute script tags in HTML content
    */
@@ -227,9 +248,14 @@
             <img src="data:image/png;base64,{result.formats['image/png']}" alt="Python Output" />
           </div>
         {/if}
+        {#if result.formats['application/vnd.vegalite+json']}
+          {#key result}
+            <div class="rich-output vega-output" use:renderVega={result.formats['application/vnd.vegalite+json']}></div>
+          {/key}
+        {/if}
       {/if}
 
-      {#if result.result !== undefined && result.result !== 'undefined' && result.result !== null && (!result.formats || (!result.formats['text/html'] && !result.formats['image/png']))}
+      {#if result.result !== undefined && result.result !== 'undefined' && result.result !== null && (!result.formats || (!result.formats['text/html'] && !result.formats['image/png'] && !result.formats['application/vnd.vegalite+json']))}
         <div class="result-line">
           <span class="out-prefix">Out:</span>
           <pre class="result-value">{result?.result}</pre>
