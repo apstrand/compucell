@@ -12,17 +12,27 @@
   export let id: string = 'cell-1';
   export let collapsed: boolean = false;
   export let label: string = '';
+  /** Visible editor height in text rows. Null keeps the default 250px box. */
+  export let rows: number | null = null;
+  /** Initial state of the auto-run toggle, before the user touches it. */
+  export let autoRunDefault: boolean = false;
+  /** Show the "Auto" checkbox. Hidden cells stay on autoRunDefault. */
+  export let showAutoRun: boolean = true;
 
   let editorContainer: HTMLElement;
   let view: EditorView;
   // Initialize with a safe empty result to avoid null-pointer errors in template
   let result: EvaluationResult = { stdout: '', stderr: '', formats: {}, metadata: {} };
   let running = false;
-  let autoRun = localStorage.getItem(`autoRun-${id}`) === 'true';
+  const savedAutoRun = localStorage.getItem(`autoRun-${id}`);
+  let autoRun = showAutoRun && savedAutoRun !== null
+    ? savedAutoRun === 'true'
+    : autoRunDefault;
   let isStale = false;
   let isManualRun = false;
   let debounceTimer: ReturnType<typeof setTimeout>;
   let isCollapsed = collapsed;
+  const ROW_PX = 20;
 
   $: statusOk = !result.error && (!!result.stdout || !!result.result ||
     (result.formats != null && Object.keys(result.formats).length > 0));
@@ -98,8 +108,10 @@
           }
         }),
         EditorView.theme({
-          "&": { height: "250px", fontSize: "14px" },
-          ".cm-scroller": { overflow: "auto" },
+          // With a row count the line height is pinned too, so the box ends
+          // exactly on a row boundary instead of showing a sliver of the next.
+          "&": { height: rows ? `${rows * ROW_PX + 10}px` : "250px", fontSize: "14px" },
+          ".cm-scroller": { overflow: "auto", ...(rows ? { lineHeight: `${ROW_PX}px` } : {}) },
           ".cm-content": { fontFamily: "var(--mono)" }
         })
       ]
@@ -209,10 +221,12 @@
           ▶
         {/if}
       </button>
-      <label class="auto-run-toggle" title="Auto-run on change">
-        <input type="checkbox" bind:checked={autoRun} />
-        <span class="toggle-label">Auto</span>
-      </label>
+      {#if showAutoRun}
+        <label class="auto-run-toggle" title="Auto-run on change">
+          <input type="checkbox" bind:checked={autoRun} />
+          <span class="toggle-label">Auto</span>
+        </label>
+      {/if}
     </div>
   </div>
   

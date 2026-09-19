@@ -62,7 +62,7 @@
           <MarkdownCell id={`${notebook.id}-${cell.id}`} initialContent={cell.content} />
         {:else if cell.type === 'code'}
           <div class="code-cell-container">
-            {#if !cell.metadata?.label}
+            {#if !cell.metadata?.label && !cell.metadata?.hideEngine}
               <div class="engine-badge {cell.engine}">{cell.engine}</div>
             {/if}
             <CodeCell
@@ -71,6 +71,9 @@
               initialCode={cell.content}
               collapsed={cell.metadata?.collapsed ?? false}
               label={cell.metadata?.label ?? ''}
+              rows={cell.metadata?.rows ?? null}
+              autoRunDefault={cell.metadata?.autoRun ?? false}
+              showAutoRun={!cell.metadata?.hideAutoRun}
             />
           </div>
         {/if}
